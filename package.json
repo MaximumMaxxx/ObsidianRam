@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidianram",
 	"version": "1.0.1",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "A plugin to slap your equations into wolfram alpha",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
