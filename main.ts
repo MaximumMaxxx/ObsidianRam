@@ -1,5 +1,5 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import { format } from 'path';
+
 const WolframAlphaAPI = require('wolfram-alpha-api');
 
 
@@ -7,10 +7,12 @@ const WolframAlphaAPI = require('wolfram-alpha-api');
 
 interface MyPluginSettings {
 	Appid: string;
+	AutoInsertGraphs: boolean;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	Appid: ''
+	Appid: '',
+	AutoInsertGraphs: false
 }
 
 export default class MyPlugin extends Plugin {
@@ -35,16 +37,30 @@ export default class MyPlugin extends Plugin {
 				let waApi = WolframAlphaAPI(this.settings.Appid);
 
 				if (text) {
+					// remove any sets of $ to avoid errors
+
+					let newtext = text.replace(/\$/g, '');
+
+
+
 					// Do something with the text
+
+
 					waApi.getFull({
-						input: text,
+						input: newtext,
 						includepodid: "Result",
 						format: "plaintext"
 					}).then((queryresult: any) => {
 						console.log(queryresult);
 						const pods = queryresult.pods;
+						if (queryresult.numpods === 0) {
+							new Notice('No results of the rquired type from Wolfram');
+							return
+						}
+
 						console.log(pods[0].subpods[0].plaintext);
-						new Notice(pods[0].subpods[0].plaintext);
+						new Notice(`${pods[0].subpods[0].plaintext} (Copied)`);
+						navigator.clipboard.writeText(pods[0].subpods[0].plaintext);
 					})
 				} else {
 					new Notice('No text selected.', 2000);
@@ -68,6 +84,8 @@ export default class MyPlugin extends Plugin {
 
 				if (text) {
 					// Do something with the text
+					text = text.replace(/\$/g, '');
+
 					waApi.getFull({
 						input: text,
 						includepodid: "Plot",
@@ -80,10 +98,17 @@ export default class MyPlugin extends Plugin {
 						}
 						const pods = queryresult.pods;
 						let graphLink = pods[0].subpods[0].img.src
-						navigator.clipboard.writeText(`<img src="${graphLink}">`).then(() => {
-							new Notice(`Image html has been copied to your clipboard`, 5000);
-						});
+						if (this.settings.AutoInsertGraphs) {
+							let currentText = editor.getSelection();
+							editor.replaceSelection(`${currentText}\n<img src = "${graphLink}">`);
+						} else {
+							navigator.clipboard.writeText(`<img src="${graphLink}">`).then(() => {
+								new Notice(`Image html has been copied to your clipboard`, 5000);
+							});
+						}
+
 					})
+
 
 				} else {
 					new Notice('No text selected.', 2000);
@@ -92,6 +117,54 @@ export default class MyPlugin extends Plugin {
 		});
 
 
+		this.addCommand({
+			id: 'step-by-step',
+
+			name: 'step by step solution',
+			editorCallback: (editor: Editor, view: MarkdownView) => {
+				let text = editor.getSelection();
+
+				if (this.settings.Appid === '') {
+					new Notice('You need to set an Appid in the settings.');
+					return false;
+				}
+				let waApi = WolframAlphaAPI(this.settings.Appid);
+
+				if (text) {
+					text = text.replace(/\$/g, '');
+
+					waApi.getFull({
+						input: text,
+						includepodid: "Result",
+						format: "plaintext",
+						podstate: "Result__Step-by-step solution",
+						output: "JSON"
+					}).then((queryresult: any) => {
+						let json: any = JSON.parse(queryresult).queryresult;
+
+						console.log(json);
+						if (json.numpods === 0) {
+							new Notice('No step by step solution found.');
+							return;
+						}
+
+
+						let subpods = json.pods[0].subpods;
+						subpods.forEach((subpod: any) => {
+							if (subpod.title === "Possible intermediate steps") {
+								editor.replaceSelection(`${editor.getSelection()}\n\`\`\`\n${subpod.plaintext}\n\`\`\`\n`);
+							}
+						})
+
+					})
+
+
+
+				} else {
+					new Notice('No text selected.', 2000);
+				}
+			}
+		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
@@ -134,6 +207,16 @@ class SampleSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.Appid)
 				.onChange(async (value) => {
 					this.plugin.settings.Appid = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Auto Insert Graphs')
+			.setDesc('Automatically insert graphs on the next line')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.AutoInsertGraphs)
+				.onChange(async (value) => {
+					this.plugin.settings.AutoInsertGraphs = value;
 					await this.plugin.saveSettings();
 				}));
 	}
