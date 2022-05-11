@@ -19,10 +19,10 @@
 - Copy the plugin to your obsidian plugins directory
 
 #### Store install
-- Whenver I get around to it
+- Whenever I get around to it
 
 **You need an api key from wolframalpha to use this**
-
+You can get that [Here](https://developer.wolframalpha.com/portal/myapps/)
 ## How to use it?
 - Two commands
   - Evalute the math
