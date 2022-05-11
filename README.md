@@ -19,7 +19,7 @@
 - Copy the plugin to your obsidian plugins directory
 
 #### Store install
-- Whever I get around to it
+- Whenver I get around to it
 
 **You need an api key from wolframalpha to use this**
 
