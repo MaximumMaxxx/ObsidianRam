@@ -1,4 +1,6 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { fileURLToPath } from 'url';
+import { runInThisContext } from 'vm';
 
 const WolframAlphaAPI = require('wolfram-alpha-api');
 
@@ -7,16 +9,19 @@ const WolframAlphaAPI = require('wolfram-alpha-api');
 
 interface MyPluginSettings {
 	Appid: string;
-	AutoInsertGraphs: boolean;
+	AutoInsertGraphs: boolean
+	imagePath: string;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
 	Appid: '',
-	AutoInsertGraphs: false
+	AutoInsertGraphs: false,
+	imagePath: "images/",
 }
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
+	imagePath: string;
 
 
 
@@ -57,10 +62,15 @@ export default class MyPlugin extends Plugin {
 							new Notice('No results of the rquired type from Wolfram');
 							return
 						}
+						let concatinatedText = ""
+						pods[0].subpods.forEach((subpod: any) => {
+							concatinatedText = concatinatedText.concat(subpod.plaintext);
+							console.log(subpod.plaintext);
+						});
 
-						console.log(pods[0].subpods[0].plaintext);
-						new Notice(`${pods[0].subpods[0].plaintext} (Copied)`);
-						navigator.clipboard.writeText(pods[0].subpods[0].plaintext);
+						console.log(concatinatedText);
+						new Notice(`${concatinatedText} (Copied)`);
+						navigator.clipboard.writeText(concatinatedText);
 					})
 				} else {
 					new Notice('No text selected.', 2000);
@@ -88,7 +98,7 @@ export default class MyPlugin extends Plugin {
 
 					waApi.getFull({
 						input: text,
-						includepodid: "Plot",
+						includepodid: ["Plot", "CountourPlot", "3DPlot"],
 						format: "image"
 					}).then((queryresult: any) => {
 						console.log(queryresult);
@@ -97,7 +107,14 @@ export default class MyPlugin extends Plugin {
 							return;
 						}
 						const pods = queryresult.pods;
+
 						let graphLink = pods[0].subpods[0].img.src
+
+
+
+
+
+
 						if (this.settings.AutoInsertGraphs) {
 							let currentText = editor.getSelection();
 							editor.replaceSelection(`${currentText}\n<img src = "${graphLink}">`);
@@ -219,5 +236,16 @@ class SampleSettingTab extends PluginSettingTab {
 					this.plugin.settings.AutoInsertGraphs = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName("Image path")
+			.setDesc("The path to the image folder")
+			.addText(text => text
+				.setPlaceholder("Enter the path")
+				.setValue(this.plugin.settings.imagePath)
+				.onChange(async (value) => {
+					this.plugin.settings.imagePath = value;
+					await this.plugin.saveSettings();
+				}));
 	}
+
 }
