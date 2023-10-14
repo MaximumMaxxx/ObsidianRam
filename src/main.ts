@@ -1,8 +1,6 @@
-import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { fileURLToPath } from 'url';
-import { runInThisContext } from 'vm';
+import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
-const WolframAlphaAPI = require('wolfram-alpha-api');
+import { } from '@wolfram-alpha/wolfram-alpha-api';
 
 
 // Remember to rename these classes and interfaces!
